@@ -1,0 +1,35 @@
+image: docker:19.03.12
+
+variables: 
+  DOCKER_TLS_CERTDIR: "/cert"
+  
+services: 
+  - docker:19.03.12-dind
+
+# Only if required. Here just checking docker info. 
+before_script:
+  - docker info
+  
+Gitlab tag creation using pipelines: 
+  # Use any stage of your choice
+  stage: build
+  
+  # Script for tagging the specified branch. Here we are tagging master branch. 
+  script: 
+    # Installing git as the docker images does not have git installed
+    - apk update && apk install git 
+    ## Use the below commands to tag a branch
+    # Check whether git is installed properly
+    - git --version
+    # Remove the existing remote branch and then adding it again with the user credentials. Otherwise, pipeline can't detect email address as we are running from ci runner.
+    - git remote remove origin
+    # Replace gitlab_personal_access_token with the token that you have created. (You need to create access token first)
+    - git remote add origin https://"oauth2:gitlab_personal_access_token"@gitlab.com/account-name/project-name.git 
+    # Configure git using the email and username to create tags. User Environment variables for that.
+    - git config user.email "${GITLAB_USER_EMAIL}"
+    - git config user.name "${GITLAB_USER_NAME}"
+    # Create and push the tag
+    - git tag -a $RELEASE_VERSION -m "$RELEASE_NOTES"
+    - git push origin $RELEASE_VERSION
+  only:
+    - master
